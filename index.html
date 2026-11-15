@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>کافه مدرسه · نسخه تستی خصوصی</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Password Gate -->
+  <div id="gate" class="gate-screen">
+    <div class="gate-card">
+      <div class="logo">☕</div>
+      <h1>کافه مدرسه</h1>
+      <p class="subtitle">نسخه تستی خصوصی · فقط برای صاحب ایده و معلم راهنما</p>
+      <input type="password" id="gate-password" placeholder="رمز ورود" autocomplete="off" />
+      <button id="gate-btn" class="btn primary">ورود</button>
+      <p class="hint">رمز در فایل README نوشته شده است</p>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div id="login" class="screen hidden">
+    <div class="login-card">
+      <div class="logo">☕</div>
+      <h1>کافه مدرسه</h1>
+      <p class="subtitle">سفارش امروز · تحویل فردا در زنگ تفریح</p>
+      
+      <label class="field">
+        <span>نام شما</span>
+        <input type="text" id="student-name" placeholder="مثلاً علی رضایی" maxlength="40" />
+      </label>
+
+      <label class="checkbox-row parent-section">
+        <input type="checkbox" id="caffeine-ok" />
+        <div>
+          <strong>نوشیدنی‌های بر پایه قهوه مجاز است</strong>
+          <small>(تأیید والدین — مرحله مربوط به والدین)</small>
+        </div>
+      </label>
+
+      <button id="login-btn" class="btn primary full">ورود به سیستم</button>
+      <p class="demo-note">این نسخه کاملاً نمایشی است · بدون پرداخت واقعی · داده ساختگی</p>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app" class="screen hidden">
+    <header class="topbar">
+      <div class="brand" onclick="showView('home')">
+        <span class="logo-sm">☕</span>
+        <span>کافه مدرسه</span>
+      </div>
+      <div class="user-info">
+        <span id="user-display"></span>
+        <button class="icon-btn" onclick="logout()" title="خروج">⎋</button>
+      </div>
+    </header>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="home" onclick="showView('home')">
+        <span>🗺️</span><small>نقشه</small>
+      </button>
+      <button class="nav-item" data-view="orders" onclick="showView('orders')">
+        <span>📋</span><small>سفارش‌ها</small>
+      </button>
+      <button class="nav-item" data-view="timeline" onclick="showView('timeline')">
+        <span>⏰</span><small>زمان‌بندی</small>
+      </button>
+      <button class="nav-item" data-view="info" onclick="showView('info')">
+        <span>ℹ️</span><small>راهنما</small>
+      </button>
+    </nav>
+
+    <main id="main">
+      <!-- Home View -->
+      <section id="view-home" class="view">
+        <div class="map-container">
+          <div id="map"></div>
+          <div class="map-overlay">
+            <div class="school-selector">
+              <label>مدرسه خود را انتخاب کنید</label>
+              <select id="school-select">
+                <option value="">— انتخاب مدرسه —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 id="cafes-title">کافه‌های اطراف</h2>
+          <p id="cafes-hint" class="hint">ابتدا یک مدرسه انتخاب کنید تا کافه‌های نزدیک نمایش داده شوند.</p>
+          <div id="cafes-list" class="cafes-grid"></div>
+        </div>
+      </section>
+
+      <!-- Orders View -->
+      <section id="view-orders" class="view hidden">
+        <div class="panel">
+          <h2>سفارش‌های من</h2>
+          <div id="orders-list" class="orders-list"></div>
+          <p id="no-orders" class="empty">هنوز سفارشی ثبت نکرده‌اید.</p>
+        </div>
+      </section>
+
+      <!-- Timeline View -->
+      <section id="view-timeline" class="view hidden">
+        <div class="panel">
+          <h2>خط‌زمانه روزانه</h2>
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-time">تا ۲۴:۰۰<br><small>شب قبل</small></div>
+              <div class="tl-content">
+                <strong>ثبت سفارش برای فردا</strong>
+                <p>سفارش بعد از ۲۴:۰۰ برای پس‌فردا حساب می‌شود. لغو آزاد است.</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">۰۰:۳۰</div>
+              <div class="tl-content">
+                <strong>لیست اولیه به کافه</strong>
+                <p>اسم، کلاس، زنگ، آیتم + مبلغ تسویه دیروز</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">۰۶:۰۰–۰۷:۰۰</div>
+              <div class="tl-content">
+                <strong>آخرین فرصت تغییر زنگ</strong>
+                <p>سپس حداقل تعداد (قابل تنظیم در ادمین) بررسی می‌شود. زنگ‌هایی که به حداقل نرسند لغو می‌شوند.</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">بعد از ۰۷:۰۰</div>
+              <div class="tl-content">
+                <strong>لیست نهایی</strong>
+                <p>ارسال به کافه و بوفه‌دار</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">قبل از زنگ‌ها</div>
+              <div class="tl-content">
+                <strong>تحویل به بوفه</strong>
+                <p>بوفه‌دار لیوان‌ها را تطبیق می‌دهد و در پنل ثبت می‌کند.</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">زنگ تفریح</div>
+              <div class="tl-content">
+                <strong>تحویل به دانش‌آموز</strong>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">تا پایان روز</div>
+              <div class="tl-content">
+                <strong>دکمه «مشکل دارم»</strong>
+                <p>پیام به کافه بدون افشای شماره</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="status-box">
+            <h3>وضعیت فعلی (نمایشی)</h3>
+            <p id="current-status">ساعت فعلی سیستم: در حال بارگذاری...</p>
+            <p class="min-info">حداقل تعداد سفارش در هر زنگ: <strong id="min-display">۳</strong> نفر</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Info View -->
+      <section id="view-info" class="view hidden">
+        <div class="panel">
+          <h2>درباره این نسخه</h2>
+          <div class="info-cards">
+            <div class="info-card">
+              <h3>🎯 هدف نسخه اول</h3>
+              <p>ببینیم جریان روزانه روی کاغذ و روی صفحه جواب می‌دهد، بعد با مدیر مدرسه صحبت کنیم.</p>
+            </div>
+            <div class="info-card">
+              <h3>🔒 خصوصی</h3>
+              <p>فقط با لینک و رمز. بدون پرداخت واقعی و با داده ساختگی.</p>
+            </div>
+            <div class="info-card">
+              <h3>📍 محدوده</h3>
+              <p>کافه‌هایی که در فاصله تقریبی ۵۰۰ تا ۸۰۰ متری مدرسه انتخاب‌شده هستند برجسته می‌شوند.</p>
+            </div>
+            <div class="info-card">
+              <h3>☕ کنترل کافئین</h3>
+              <p>پیش‌فرض غیرمجاز. تیک والدین در لاگین بخش قهوه را فعال می‌کند.</p>
+            </div>
+          </div>
+          <p class="footer-note">نسخه تستی · آبان ۱۴۰۵ · طرح محرمانه</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Cafe Menu Modal -->
+  <div id="menu-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeMenu()">×</button>
+      <div id="menu-header"></div>
+      <div id="menu-body"></div>
+    </div>
+  </div>
+
+  <!-- Order Modal -->
+  <div id="order-modal" class="modal hidden">
+    <div class="modal-content small">
+      <button class="close-btn" onclick="closeOrderModal()">×</button>
+      <h2>ثبت سفارش</h2>
+      <div id="order-item-preview"></div>
+      <label class="field">
+        <span>زنگ تفریح</span>
+        <select id="break-select">
+          <option value="1">زنگ اول (۱۰:۱۵)</option>
+          <option value="2">زنگ دوم (۱۲:۰۰)</option>
+          <option value="3">زنگ سوم (۱۳:۳۰)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>توضیحات (اختیاری)</span>
+        <input type="text" id="order-note" placeholder="مثلاً بدون شکر" />
+      </label>
+      <div class="min-counter" id="min-counter"></div>
+      <button id="confirm-order" class="btn primary full">ثبت سفارش (نمایشی)</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
