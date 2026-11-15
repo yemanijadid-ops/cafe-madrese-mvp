@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>پنل ادمین · کافه مدرسه</title>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .admin-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+    .admin-header h1 { font-size: 22px; }
+    .cafe-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .cafe-tab { padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
+    .cafe-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .edit-section { background: #fff; border-radius: 16px; padding: 20px; border: 1.5px solid var(--border); margin-bottom: 20px; }
+    .edit-section h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
+    .item-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .item-row input { flex: 1; min-width: 100px; padding: 10px 12px; font-size: 14px; }
+    .item-row .price-in { max-width: 110px; }
+    .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+    .btn-danger { background: #fce8e8; color: var(--danger); border: none; }
+    .settings-box { background: var(--accent-soft); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
+    .settings-box label { display: block; font-size: 13px; margin-bottom: 6px; }
+    .settings-box input { width: 80px; padding: 10px; }
+    .orders-admin { margin-top: 32px; }
+    .orders-admin table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .orders-admin th, .orders-admin td { padding: 10px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+    .orders-admin th { font-weight: 600; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="admin-gate" class="gate-screen">
+    <div class="gate-card">
+      <div class="logo">⚙️</div>
+      <h1>پنل ادمین</h1>
+      <p class="subtitle">کافه مدرسه · نسخه تستی</p>
+      <input type="password" id="admin-pw" placeholder="رمز ادمین" />
+      <button id="admin-login" class="btn primary" style="margin-top:12px;width:100%">ورود</button>
+    </div>
+  </div>
+
+  <div id="admin-app" class="hidden">
+    <div class="admin-wrap">
+      <div class="admin-header">
+        <h1>پنل ادمین</h1>
+        <a href="index.html" class="btn outline btn-sm">بازگشت به سایت</a>
+      </div>
+
+      <div class="settings-box">
+        <h3 style="margin-bottom:12px">تنظیمات حداقل سفارش</h3>
+        <label>حداقل تعداد سفارش در هر زنگ</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" id="min-input" min="1" max="20" value="3" />
+          <button class="btn primary btn-sm" onclick="saveMin()">ذخیره</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px">این عدد در صفحه زمان‌بندی و شمارنده سفارش نمایش داده می‌شود.</p>
+      </div>
+
+      <h2 style="font-size:17px;margin-bottom:12px">ویرایش منوی کافه‌ها</h2>
+      <div class="cafe-tabs" id="cafe-tabs"></div>
+      <div id="menu-editor"></div>
+
+      <div class="orders-admin">
+        <h2 style="font-size:17px;margin-bottom:12px">سفارش‌های ثبت‌شده (نمایشی)</h2>
+        <div id="admin-orders"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const ADMIN_PASSWORD = "admin-cafe-v1";
+    let currentCafeId = null;
+    let menus = null;
+
+    document.getElementById("admin-login").addEventListener("click", () => {
+      if (document.getElementById("admin-pw").value === ADMIN_PASSWORD) {
+        document.getElementById("admin-gate").classList.add("hidden");
+        document.getElementById("admin-app").classList.remove("hidden");
+        initAdmin();
+      } else {
+        alert("رمز اشتباه");
+      }
+    });
+
+    function loadMenus() {
+      const saved = localStorage.getItem("cm_menus");
+      if (saved) try { return JSON.parse(saved); } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_MENUS));
+    }
+
+    function saveMenus(m) {
+      localStorage.setItem("cm_menus", JSON.stringify(m));
+    }
+
+    function initAdmin() {
+      menus = loadMenus();
+      document.getElementById("min-input").value = localStorage.getItem("cm_min_per_break") || "3";
+
+      const tabs = document.getElementById("cafe-tabs");
+      tabs.innerHTML = CAFES.map((c, i) =>
+        `<button class="cafe-tab ${i===0?'active':''}" onclick="selectCafe('${c.id}', this)">${c.name}</button>`
+      ).join("");
+
+      selectCafe(CAFES[0].id, tabs.querySelector(".cafe-tab"));
+      renderAdminOrders();
+    }
+
+    function selectCafe(id, btn) {
+      currentCafeId = id;
+      document.querySelectorAll(".cafe-tab").forEach(t => t.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      renderEditor();
+    }
+
+    function renderEditor() {
+      const menu = menus[currentCafeId] || { coffee: {hot:[],cold:[]}, nonCaffeine: {hot:[],cold:[]}, sweets: [] };
+      const el = document.getElementById("menu-editor");
+
+      el.innerHTML = `
+        <div class="edit-section">
+          <h3>قهوه — گرم</h3>
+          <div id="ed-coffee-hot">${renderEditItems(menu.coffee?.hot || [], "coffee", "hot")}</div>
+          <button class="btn outline btn-sm" onclick="addItem('coffee','hot')">+ افزودن</button>
+        </div>
+        <div class="edit-section">
+          <h3>قهوه — سرد</h3>
+          <div id="ed-coffee-cold">${renderEditItems(menu.coffee?.cold || [], "coffee", "cold")}</div>
+          <button class="btn outline btn-sm" onclick="addItem('coffee','cold')">+ افزودن</button>
+        </div>
+        <div class="edit-section">
+          <h3>بدون کافئین — گرم</h3>
+          <div id="ed-non-hot">${renderEditItems(menu.nonCaffeine?.hot || [], "nonCaffeine", "hot")}</div>
+          <button class="btn outline btn-sm" onclick="addItem('nonCaffeine','hot')">+ افزودن</button>
+        </div>
+        <div class="edit-section">
+          <h3>بدون کافئین — سرد</h3>
+          <div id="ed-non-cold">${renderEditItems(menu.nonCaffeine?.cold || [], "nonCaffeine", "cold")}</div>
+          <button class="btn outline btn-sm" onclick="addItem('nonCaffeine','cold')">+ افزودن</button>
+        </div>
+        <div class="edit-section">
+          <h3>کیک و شیرینی</h3>
+          <div id="ed-sweets">${renderEditItems(menu.sweets || [], "sweets", null)}</div>
+          <button class="btn outline btn-sm" onclick="addItem('sweets',null)">+ افزودن</button>
+        </div>
+        <button class="btn primary full" onclick="saveCurrentMenu()" style="margin-top:8px">ذخیره منوی این کافه</button>
+      `;
+    }
+
+    function renderEditItems(items, cat, sub) {
+      return items.map((it, idx) => `
+        <div class="item-row" data-idx="${idx}">
+          <input type="text" value="${it.name || ''}" placeholder="نام" data-field="name" />
+          <input type="number" class="price-in" value="${it.price || 0}" placeholder="قیمت" data-field="price" />
+          <input type="text" value="${it.desc || ''}" placeholder="توضیح" data-field="desc" />
+          <button class="btn-sm btn-danger" onclick="removeItem('${cat}','${sub}',${idx})">حذف</button>
+        </div>
+      `).join("") || '<p style="font-size:13px;color:var(--muted)">خالی</p>';
+    }
+
+    function getItemsFromDom(cat, sub) {
+      const id = sub ? `ed-${cat === 'coffee' ? 'coffee' : 'non'}-${sub}` : 'ed-sweets';
+      // fix mapping
+      let elId;
+      if (cat === 'coffee' && sub === 'hot') elId = 'ed-coffee-hot';
+      else if (cat === 'coffee' && sub === 'cold') elId = 'ed-coffee-cold';
+      else if (cat === 'nonCaffeine' && sub === 'hot') elId = 'ed-non-hot';
+      else if (cat === 'nonCaffeine' && sub === 'cold') elId = 'ed-non-cold';
+      else elId = 'ed-sweets';
+
+      const container = document.getElementById(elId);
+      if (!container) return [];
+      const rows = container.querySelectorAll(".item-row");
+      return Array.from(rows).map(row => {
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        const price = parseInt(row.querySelector('[data-field="price"]').value, 10) || 0;
+        const desc = row.querySelector('[data-field="desc"]').value.trim();
+        const id = 'item-' + Date.now() + Math.random().toString(36).slice(2,6);
+        return { id, name, price, desc };
+      }).filter(i => i.name);
+    }
+
+    function collectMenuFromDom() {
+      return {
+        coffee: {
+          hot: getItemsFromDom('coffee', 'hot'),
+          cold: getItemsFromDom('coffee', 'cold')
+        },
+        nonCaffeine: {
+          hot: getItemsFromDom('nonCaffeine', 'hot'),
+          cold: getItemsFromDom('nonCaffeine', 'cold')
+        },
+        sweets: getItemsFromDom('sweets', null)
+      };
+    }
+
+    function saveCurrentMenu() {
+      menus[currentCafeId] = collectMenuFromDom();
+      saveMenus(menus);
+      alert("منو ذخیره شد");
+      renderEditor();
+    }
+
+    function addItem(cat, sub) {
+      // First collect current values so we don't lose edits
+      menus[currentCafeId] = collectMenuFromDom();
+      if (cat === 'sweets') {
+        if (!menus[currentCafeId].sweets) menus[currentCafeId].sweets = [];
+        menus[currentCafeId].sweets.push({ id: 'new', name: '', price: 0, desc: '' });
+      } else {
+        if (!menus[currentCafeId][cat]) menus[currentCafeId][cat] = { hot: [], cold: [] };
+        menus[currentCafeId][cat][sub].push({ id: 'new', name: '', price: 0, desc: '' });
+      }
+      renderEditor();
+    }
+
+    function removeItem(cat, sub, idx) {
+      menus[currentCafeId] = collectMenuFromDom();
+      if (cat === 'sweets') {
+        menus[currentCafeId].sweets.splice(idx, 1);
+      } else {
+        menus[currentCafeId][cat][sub].splice(idx, 1);
+      }
+      renderEditor();
+    }
+
+    function saveMin() {
+      const v = parseInt(document.getElementById("min-input").value, 10) || 3;
+      localStorage.setItem("cm_min_per_break", String(v));
+      alert("حداقل ذخیره شد: " + v);
+    }
+
+    function renderAdminOrders() {
+      const orders = JSON.parse(localStorage.getItem("cm_orders") || "[]");
+      const el = document.getElementById("admin-orders");
+      if (!orders.length) {
+        el.innerHTML = '<p style="color:var(--muted);font-size:14px">هنوز سفارشی ثبت نشده.</p>';
+        return;
+      }
+      const breakNames = { "1": "اول", "2": "دوم", "3": "سوم" };
+      el.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>دانش‌آموز</th><th>کافه</th><th>آیتم</th><th>زنگ</th><th>قیمت</th><th>وضعیت</th></tr>
+          </thead>
+          <tbody>
+            ${orders.map(o => `
+              <tr>
+                <td>${o.student}</td>
+                <td>${o.cafeName}</td>
+                <td>${o.itemName}</td>
+                <td>${breakNames[o.break] || o.break}</td>
+                <td>${(o.price||0).toLocaleString('fa-IR')}</td>
+                <td>${o.status}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    window.selectCafe = selectCafe;
+    window.addItem = addItem;
+    window.removeItem = removeItem;
+    window.saveCurrentMenu = saveCurrentMenu;
+    window.saveMin = saveMin;
+  </script>
+</body>
+</html>
